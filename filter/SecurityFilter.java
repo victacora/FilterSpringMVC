@@ -131,8 +131,9 @@ public class SecurityFilter implements Filter {
     }
 
     /**
-     * Determina si la peticion es de tipo MultipartContent o no, y retorna un objeto en cargado de controlar
-     * la atencion de la peticion.
+     * Determina si la peticion es de tipo MultipartContent o no, y retorna un
+     * objeto en cargado de controlar la atencion de la peticion.
+     *
      * @param request
      * @return
      */
@@ -155,21 +156,23 @@ public class SecurityFilter implements Filter {
 
         @Override
         public HttpServletRequest isAuthorized(HttpServletRequest request) throws NotAuthorizedException {
+            //obtencion del token JWT enviado dentro de los parametros de la peticion
             String token = request.getParameter("token") != null ? request.getParameter("token").substring(7) : "";
             try {
+                //verificacion del token JWT
                 final Claims claims = Jwts.parser().setSigningKey(Constantes.KEY)
                         .parseClaimsJws(token).getBody();
                 request.setAttribute("claims", claims);
             } catch (ExpiredJwtException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. El token ha expirado.");
             } catch (UnsupportedJwtException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. Excepcion no controlada.");
             } catch (MalformedJwtException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. Token mal formado.");
             } catch (SignatureException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. No se encuntra debidamente firmado.");
             } catch (IllegalArgumentException e) {
-                throw new NotAuthorizedException("Error al validar token. la peticion posiblemente o no cuenta con el token de validacion, o es invalido o ha expirado.");
+                throw new NotAuthorizedException("Error al validar token. Argumentos invalidos.");
             }
             return request;
 
@@ -225,24 +228,25 @@ public class SecurityFilter implements Filter {
             } catch (FileUploadException e) {
                 e.printStackTrace();
             }
-
+               //obtencion del token JWT enviado dentro de los parametros de la peticion
             String token = map.get("token") != null ? map.get("token").toString().substring(7) : "";
             InputStream in = new ByteArrayInputStream(mpwrapper.toBytes());
             MPRequestWrapper wrapper = new MPRequestWrapper(request, new MyServletInputStream(in));
             try {
+                //verificacion del token JWT
                 final Claims claims = Jwts.parser().setSigningKey(Constantes.KEY)
                         .parseClaimsJws(token).getBody();
                 wrapper.setAttribute("claims", claims);
             } catch (ExpiredJwtException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. El token ha expirado.");
             } catch (UnsupportedJwtException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. Excepcion no controlada.");
             } catch (MalformedJwtException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. Token mal formado.");
             } catch (SignatureException e) {
-                throw new NotAuthorizedException();
+                throw new NotAuthorizedException("Error al validar token. No se encuntra debidamente firmado.");
             } catch (IllegalArgumentException e) {
-                throw new NotAuthorizedException("Error al validar token. la peticion posiblemente o no cuenta con el token de validacion, o es invalido o ha expirado.");
+                throw new NotAuthorizedException("Error al validar token. Argumentos invalidos.");
             }
 
             return wrapper;
