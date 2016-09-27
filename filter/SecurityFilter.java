@@ -34,7 +34,7 @@ import org.seratic.enterprise.tgestiona.constantes.Constantes;
 
 public class SecurityFilter implements Filter {
 
-    Log log = LogFactory.getLog(this.getClass());
+    Log log = LogFactory.getLog("Aplicacion");
     private SecurityGuard methodGetPostGuard;
     private SecurityGuard methodMultiPartGuard;
 
@@ -47,8 +47,7 @@ public class SecurityFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response,
             FilterChain chain) throws IOException, ServletException {
         if (request instanceof HttpServletRequest) {
-            doFilter((HttpServletRequest) request,
-                    (HttpServletResponse) response, chain);
+            doFilter((HttpServletRequest) request, (HttpServletResponse) response, chain);
         } else {
             chain.doFilter(request, response);
         }
@@ -60,18 +59,25 @@ public class SecurityFilter implements Filter {
             throws IOException, ServletException {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         HttpServletRequest httpRequest = (HttpServletRequest) request;
-        String requestURI = httpRequest.getRequestURI();
-
-        SecurityGuard guard = getGuard(request);
-
+        String contextPath = request.getContextPath();
+        String requestURI = request.getRequestURI().substring(contextPath.length());
+        
         try {
-            httpRequest = guard.isAuthorized(request);
-        } catch (NotAuthorizedException e) {
-            if (verificarRutasExcluida(requestURI)) {
-                httpResponse.sendRedirect(isAjaxRequest(httpRequest) ? "/sittlog/usuario/errorAutenticacion.action" : "/sittlog");
+            SecurityGuard guard = getGuard(request);
+
+            try {
+                httpRequest = guard.isAuthorized(request);
+            } catch (NotAuthorizedException e) {
+                if (verificarRutasExcluida(requestURI)) {
+                    httpResponse.sendRedirect(isAjaxRequest(httpRequest) ? contextPath+"/usuario/errorAutenticacion.action" : contextPath);
+                }
             }
+            chain.doFilter(httpRequest, httpResponse);
+        } catch (Exception e) {
+            log.error(e);
+            e.printStackTrace();
         }
-        chain.doFilter(httpRequest, httpResponse);
+
     }
 
     @Override
@@ -98,7 +104,7 @@ public class SecurityFilter implements Filter {
             try {
                 final Claims claims = Jwts.parser().setSigningKey(Constantes.KEY)
                         .parseClaimsJws(token).getBody();
-                  request.setAttribute("claims", claims);
+                request.setAttribute("claims", claims);
             } catch (ExpiredJwtException e) {
                 throw new NotAuthorizedException();
             } catch (UnsupportedJwtException e) {
@@ -117,6 +123,7 @@ public class SecurityFilter implements Filter {
     }
 
     class MultiPartMimeSecurityGuard implements SecurityGuard {
+
         FileItemFactory factory = new DiskFileItemFactory();
         ServletFileUpload upload = new ServletFileUpload(factory);
 
@@ -165,8 +172,7 @@ public class SecurityFilter implements Filter {
             } catch (IllegalArgumentException e) {
                 throw new NotAuthorizedException();
             }
-            
-            
+
             return wrapper;
         }
     }
@@ -177,19 +183,23 @@ public class SecurityFilter implements Filter {
     }
 
     private boolean verificarRutasExcluida(String requestURI) {
-        return !requestURI.equals("/sittlog/")
-                && !requestURI.contains("/sittlog/js/")
-                && !requestURI.contains("/sittlog/css/")
-                && !requestURI.contains("/sittlog/images/")
-                && !requestURI.contains("/sittlog/modulos/")
-                && !requestURI.contains("/sittlog/res/")
-                && !requestURI.contains("/sittlog/stylesheets/")
-                && !requestURI.contains("/sittlog/ux/")
+        return !requestURI.equals("/")
+                && !requestURI.contains("/js/")
+                && !requestURI.contains("/css/")
+                && !requestURI.contains("/images/")
+                && !requestURI.contains("/modulos/")
+                && !requestURI.contains("/res/")
+                && !requestURI.contains("/stylesheets/")
+                && !requestURI.contains("/ux/")
                 && !requestURI.endsWith(".js")
                 && !requestURI.endsWith(".css")
-                && !requestURI.equals("/sittlog/usuario/validar.action")
-                && !requestURI.equals("/sittlog/usuario/errorAutenticacion.action")
-                && !requestURI.equals("/sittlog/Comunicacion");
+                && !requestURI.endsWith(".ico")
+                && !requestURI.endsWith(".png")
+                && !requestURI.endsWith(".jpg")
+                && !requestURI.endsWith(".jpeg")
+                && !requestURI.equals("/usuario/validar.action")
+                && !requestURI.equals("/usuario/errorAutenticacion.action")
+                && !requestURI.equals("/Comunicacion");
     }
 
 }
