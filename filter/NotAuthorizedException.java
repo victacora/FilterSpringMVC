@@ -1,5 +1,8 @@
 package org.seratic.enterprise.tgestiona.web.filter;
-
+/**
+ * Excepion lanzada al momento de hacer el proceso de validacion del JWT
+ * @author VICTORAL
+ */
 public class NotAuthorizedException extends Exception {
     /**
      * 

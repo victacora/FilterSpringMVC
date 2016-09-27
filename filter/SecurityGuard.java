@@ -1,14 +1,10 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package org.seratic.enterprise.tgestiona.web.filter;
 
 import javax.servlet.http.HttpServletRequest;
 
 /**
- *
+ * Declaracion de interface con el metodo para el control de acceso haciendo uso de JWT 
  * @author VICTORAL
  */
 public interface  SecurityGuard {
