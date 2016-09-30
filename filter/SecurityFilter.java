@@ -22,6 +22,7 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemFactory;
@@ -31,6 +32,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.seratic.enterprise.tgestiona.constantes.Constantes;
+import org.seratic.enterprise.tgestiona.web.vo.UsuarioAutenticacionVO;
 
 /**
  * Implementacion de filtro para control de acceso haciendo uso de JWT
@@ -107,10 +109,17 @@ public class SecurityFilter implements Filter {
 
         try {
             //Aqui se definie como debe ser manejada la peticion entrante. Debido a que existen un manejo 
-            // diferente para poder obtener los 
-            SecurityGuard guard = getGuard(request);
+            // diferente para poder obtener los parametros y conseguir el toekn enviado
+            HttpSession session = httpRequest.getSession();
+            UsuarioAutenticacionVO u = (UsuarioAutenticacionVO) session.getAttribute("usuario");
+            SecurityGuard guard = null;
             try {
-                httpRequest = guard.isAuthorized(request);
+                if (u != null) {
+                    guard = getGuard(request);
+                    httpRequest = guard.isAuthorized(request);
+                } else {
+                    throw new NotAuthorizedException("El usuario no ha iniciado sesion.");
+                }
             } catch (NotAuthorizedException e) {
                 if (verificarRutasExcluida(requestURI)) {
                     httpResponse.sendRedirect(isAjaxRequest(httpRequest) ? contextPath + "/usuario/errorAutenticacion.action" : contextPath);
@@ -160,9 +169,9 @@ public class SecurityFilter implements Filter {
             String token = request.getParameter("token") != null ? request.getParameter("token").substring(7) : "";
             try {
                 //verificacion del token JWT
-                final Claims claims = Jwts.parser().setSigningKey(Constantes.KEY)
-                        .parseClaimsJws(token).getBody();
-                request.setAttribute("claims", claims);
+                String idUsuario = Jwts.parser().setSigningKey(Constantes.KEY)
+                        .parseClaimsJws(token).getBody().getSubject();
+                request.setAttribute("idUsuario", idUsuario);
             } catch (ExpiredJwtException e) {
                 throw new NotAuthorizedException("Error al validar token. El token ha expirado.");
             } catch (UnsupportedJwtException e) {
@@ -175,7 +184,6 @@ public class SecurityFilter implements Filter {
                 throw new NotAuthorizedException("Error al validar token. Argumentos invalidos.");
             }
             return request;
-
         }
 
     }
@@ -228,15 +236,15 @@ public class SecurityFilter implements Filter {
             } catch (FileUploadException e) {
                 e.printStackTrace();
             }
-               //obtencion del token JWT enviado dentro de los parametros de la peticion
+            //obtencion del token JWT enviado dentro de los parametros de la peticion
             String token = map.get("token") != null ? map.get("token").toString().substring(7) : "";
             InputStream in = new ByteArrayInputStream(mpwrapper.toBytes());
             MPRequestWrapper wrapper = new MPRequestWrapper(request, new MyServletInputStream(in));
             try {
                 //verificacion del token JWT
-                final Claims claims = Jwts.parser().setSigningKey(Constantes.KEY)
-                        .parseClaimsJws(token).getBody();
-                wrapper.setAttribute("claims", claims);
+                String idUsuario = Jwts.parser().setSigningKey(Constantes.KEY)
+                        .parseClaimsJws(token).getBody().getSubject();
+                wrapper.setAttribute("idUsuario", idUsuario);
             } catch (ExpiredJwtException e) {
                 throw new NotAuthorizedException("Error al validar token. El token ha expirado.");
             } catch (UnsupportedJwtException e) {
@@ -251,6 +259,7 @@ public class SecurityFilter implements Filter {
 
             return wrapper;
         }
+
     }
 
     /**
