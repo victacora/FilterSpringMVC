@@ -1,6 +1,5 @@
 package org.seratic.enterprise.tgestiona.web.filter;
 
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
@@ -9,6 +8,7 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -43,6 +43,8 @@ public class SecurityFilter implements Filter {
 
     Log log = LogFactory.getLog("Aplicacion");
 
+    SimpleDateFormat formatFechaHora = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+
     private SecurityGuard methodGetPostGuard;
     private SecurityGuard methodMultiPartGuard;
 
@@ -63,8 +65,7 @@ public class SecurityFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response,
             FilterChain chain) throws IOException, ServletException {
-
-        if (request instanceof HttpServletRequest) {
+        if (request instanceof HttpServletRequest && Constantes.VALIDAR_TOKEN == 1) {
             doFilter((HttpServletRequest) request, (HttpServletResponse) response, chain);
         } else {
             chain.doFilter(request, response);
@@ -114,15 +115,23 @@ public class SecurityFilter implements Filter {
             UsuarioAutenticacionVO u = (UsuarioAutenticacionVO) session.getAttribute("usuario");
             SecurityGuard guard = null;
             try {
-                if (u != null) {
-                    guard = getGuard(request);
-                    httpRequest = guard.isAuthorized(request);
-                } else {
-                    throw new NotAuthorizedException("El usuario no ha iniciado sesion.");
+                if (verificarRutasExcluida(requestURI)) {
+                    if (u != null) {
+                        guard = getGuard(request);
+                        httpRequest = guard.isAuthorized(request);
+                        String idUsuario = httpRequest.getAttribute("idUsuario").toString();
+                        if (!String.valueOf(u.getCodigo()).equals(idUsuario)) {
+                            log.info("Sesiones-> El Id Usuario token no coincide con el Id Usuario de la sesion.");
+                            throw new NotAuthorizedException("El Id Usuario token no coincide con el Id Usuario de la sesion.");
+                        }
+                    } else {
+                        log.info("Sesiones-> El usuario no ha iniciado sesion.");
+                        throw new NotAuthorizedException("El usuario no ha iniciado sesion.");
+                    }
                 }
             } catch (NotAuthorizedException e) {
                 if (verificarRutasExcluida(requestURI)) {
-                    httpResponse.sendRedirect(isAjaxRequest(httpRequest) ? contextPath + "/usuario/errorAutenticacion.action" : contextPath);
+                    httpResponse.sendRedirect(isAjaxRequest(httpRequest) ? contextPath + "/usuario/errorAutenticacion.action" : contextPath + "/");
                 }
             }
             chain.doFilter(httpRequest, httpResponse);
@@ -173,14 +182,19 @@ public class SecurityFilter implements Filter {
                         .parseClaimsJws(token).getBody().getSubject();
                 request.setAttribute("idUsuario", idUsuario);
             } catch (ExpiredJwtException e) {
+                log.info("Sesiones-> Error al validar token. El token ha expirado.");
                 throw new NotAuthorizedException("Error al validar token. El token ha expirado.");
             } catch (UnsupportedJwtException e) {
+                log.info("Sesiones-> Error al validar token. Excepcion no controlada.");
                 throw new NotAuthorizedException("Error al validar token. Excepcion no controlada.");
             } catch (MalformedJwtException e) {
+                log.info("Sesiones-> Error al validar token. Token mal formado.");
                 throw new NotAuthorizedException("Error al validar token. Token mal formado.");
             } catch (SignatureException e) {
-                throw new NotAuthorizedException("Error al validar token. No se encuntra debidamente firmado.");
+                log.info("Sesiones->Error al validar token. No se encuentra debidamente firmado.");
+                throw new NotAuthorizedException("Error al validar token. No se encuentra debidamente firmado.");
             } catch (IllegalArgumentException e) {
+                log.info("Sesiones->Error al validar token. Argumentos invalidos.");
                 throw new NotAuthorizedException("Error al validar token. Argumentos invalidos.");
             }
             return request;
@@ -246,14 +260,19 @@ public class SecurityFilter implements Filter {
                         .parseClaimsJws(token).getBody().getSubject();
                 wrapper.setAttribute("idUsuario", idUsuario);
             } catch (ExpiredJwtException e) {
+                log.info("Sesiones-> Error al validar token. El token ha expirado.");
                 throw new NotAuthorizedException("Error al validar token. El token ha expirado.");
             } catch (UnsupportedJwtException e) {
+                log.info("Sesiones-> Error al validar token. Excepcion no controlada.");
                 throw new NotAuthorizedException("Error al validar token. Excepcion no controlada.");
             } catch (MalformedJwtException e) {
+                log.info("Sesiones-> Error al validar token. Token mal formado.");
                 throw new NotAuthorizedException("Error al validar token. Token mal formado.");
             } catch (SignatureException e) {
-                throw new NotAuthorizedException("Error al validar token. No se encuntra debidamente firmado.");
+                log.info("Sesiones->Error al validar token. No se encuentra debidamente firmado.");
+                throw new NotAuthorizedException("Error al validar token. No se encuentra debidamente firmado.");
             } catch (IllegalArgumentException e) {
+                log.info("Sesiones->Error al validar token. Argumentos invalidos.");
                 throw new NotAuthorizedException("Error al validar token. Argumentos invalidos.");
             }
 
